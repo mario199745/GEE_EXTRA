@@ -1,0 +1,33 @@
+// Definir la zona de interés (en este caso, Trujillo)
+var trujillo = ee.Geometry.Rectangle(-79.055052, -8.017132, -78.978073, -7.953584);
+
+// Función para descargar imágenes Landsat por año
+function downloadLandsatByYear(year) {
+  // Cargar la colección de imágenes Landsat 5
+  var landsat = ee.ImageCollection('LANDSAT/LT05/C01/T1_SR')
+    .filterBounds(trujillo) // filtrar por la zona de interés
+    .filterDate(year + '-01-01', year + '-12-31') // filtrar por el año correspondiente
+    .filterMetadata('CLOUD_COVER', 'less_than', 20); // filtrar por nubosidad menor al 20%
+  
+  // Seleccionar la imagen con menos nubosidad
+  var image = landsat.sort('CLOUD_COVER').first();
+  
+  // Seleccionar las bandas de interés
+  var bands = ['B3', 'B4', 'B5'];
+  
+  // Recortar la imagen a la zona de interés
+  var clipped = image.clip(trujillo);
+  
+  // Descargar la imagen recortada como un archivo TIFF con el nombre del año
+  Export.image.toDrive({
+    image: clipped.select(bands),
+    description: 'landsat_' + year + '_trujillo',
+    region: trujillo,
+    scale: 30 // Resolución espacial de 30 metros
+  });
+}
+
+// Descargar imágenes Landsat para los años 2001 a 2020
+for (var year = 2001; year <= 2020; year++) {
+  downloadLandsatByYear(year);
+}
